@@ -2,8 +2,9 @@ import requests
 import time
 import webbrowser
 import os
-from config import GITHUB_CLIENT_ID #, TOKEN_FILE
-
+from config import GITHUB_CLIENT_ID, KEYRING_SERVICE, KEYRING_ACCOUNT  #, TOKEN_FILE
+import keyring
+from keyring.errors import PasswordDeleteError
 
 
 class GitHubAuthManager:
