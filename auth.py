@@ -2,28 +2,54 @@ import requests
 import time
 import webbrowser
 import os
-from config import GITHUB_CLIENT_ID, TOKEN_FILE
+from config import GITHUB_CLIENT_ID #, TOKEN_FILE
+
+
 
 class GitHubAuthManager:
     def __init__(self):
         self.client_id = GITHUB_CLIENT_ID
         self.access_token = self.load_cached_token()
 
+    # def load_cached_token(self):
+    #     if os.path.exists(TOKEN_FILE):
+    #         with open(TOKEN_FILE, "r") as f:
+    #             return f.read().strip()
+    #     return None
+
+    # def save_token(self, token):
+    #     self.access_token = token
+    #     with open(TOKEN_FILE, "w") as f:
+    #         f.write(token)
+
+    # def logout(self):
+    #     self.access_token = None
+    #     if os.path.exists(TOKEN_FILE):
+    #         os.remove(TOKEN_FILE)
+
     def load_cached_token(self):
-        if os.path.exists(TOKEN_FILE):
-            with open(TOKEN_FILE, "r") as f:
-                return f.read().strip()
-        return None
+        """Récupère le token de manière sécurisée depuis le coffre-fort du système"""
+        try:
+            return keyring.get_password(KEYRING_SERVICE, KEYRING_ACCOUNT)
+        except Exception:
+            return None
 
     def save_token(self, token):
+        """Chiffre et sauvegarde le token dans le coffre-fort du système"""
         self.access_token = token
-        with open(TOKEN_FILE, "w") as f:
-            f.write(token)
+        try:
+            keyring.set_password(KEYRING_SERVICE, KEYRING_ACCOUNT, token)
+        except Exception as e:
+            print(f"Impossible de sauvegarder le token dans le keyring : {e}")
 
     def logout(self):
+        """Efface proprement le token de la mémoire et du système"""
         self.access_token = None
-        if os.path.exists(TOKEN_FILE):
-            os.remove(TOKEN_FILE)
+        try:
+            keyring.delete_password(KEYRING_SERVICE, KEYRING_ACCOUNT)
+        except (PasswordDeleteError, Exception):
+            # Le token n'existait pas ou a déjà été supprimé, on ignore l'erreur
+            pass
 
     def start_device_flow(self, status_callback):
         """Lance la procédure d'authentification par code appareil sans Token manuel"""
