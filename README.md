@@ -31,14 +31,8 @@ Before running MineSync, ensure you have the following installed on your machine
 1. **Clone or Download** this project into a folder on your computer.
 2. Open your terminal/command prompt inside that folder and install the required Python libraries:
 
-```
-
-```text
-README.md file successfully generated via interpreter.
-
 ```bash
    pip install -r requirements.txt
-
 ```
 
 3. Run the application:
