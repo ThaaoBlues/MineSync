@@ -1,5 +1,6 @@
 import os
 import platform
+import re
 from datetime import datetime
 from git import Repo, exc
 from github import Github
@@ -152,3 +153,37 @@ class MinecraftGitManager:
         repo_name = self.get_repo_name(world_name)
         gh_repo = user.get_repo(repo_name)
         gh_repo.add_to_collaborators(github_username, permission="push")
+
+    # --- NEW FEATURES ---
+
+    def get_repo_url(self, world_name):
+        """Retrieves the GitHub URL, removing any embedded tokens for safe sharing."""
+        try:
+            repo = self.init_or_load_repo(world_name)
+            url = repo.remotes.origin.url
+            clean_url = re.sub(r'https://[^@]+@', 'https://', url)
+            return clean_url
+        except Exception:
+            return None
+
+    def clone_world_from_url(self, url):
+        """Clones a world from a GitHub URL directly into the Minecraft saves folder."""
+        if not self.saves_dir:
+            raise Exception("Minecraft saves directory not found.")
+        
+        # Parse the world name from the URL
+        repo_name = url.rstrip('/').split('/')[-1]
+        if repo_name.endswith('.git'):
+            repo_name = repo_name[:-4]
+        
+        # Try to format the folder name nicely (remove 'mc-world-' prefix and hyphens)
+        world_name = repo_name.replace('mc-world-', '').replace('-', ' ').title()
+        
+        world_path = os.path.join(self.saves_dir, world_name)
+        if os.path.exists(world_path):
+            raise Exception(f"A folder named '{world_name}' already exists in your saves.")
+
+        auth_url = url.replace("https://", f"https://{self.token}@")
+        Repo.clone_from(auth_url, world_path)
+        
+        return world_nameu

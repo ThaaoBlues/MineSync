@@ -9,7 +9,7 @@ class MineSyncUI(ctk.CTk):
         super().__init__()
 
         self.title("MineSync - Minecraft P2P Synchronization")
-        self.geometry("900x650")
+        self.geometry("950x700")
         
         self.auth_manager = GitHubAuthManager()
         self.git_manager = MinecraftGitManager(self.auth_manager.access_token)
@@ -19,7 +19,7 @@ class MineSyncUI(ctk.CTk):
         self.check_initial_auth()
 
     def build_ui(self):
-        # --- Sidebar (Authentication) ---
+        # --- Sidebar (Authentication & Global Actions) ---
         self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0)
         self.sidebar.pack(side="left", fill="y")
         
@@ -34,6 +34,10 @@ class MineSyncUI(ctk.CTk):
 
         self.auth_btn = ctk.CTkButton(self.sidebar, text="Link GitHub Account", command=self.handle_auth)
         self.auth_btn.pack(pady=10, padx=20, fill="x")
+
+        # New Download button in Sidebar
+        self.download_btn = ctk.CTkButton(self.sidebar, text="🌐 Clone World from URL", fg_color="#8a2be2", hover_color="#6a1b9a", command=self.download_world_dialog, state="disabled")
+        self.download_btn.pack(pady=30, padx=20, fill="x")
 
         # --- Main Content Section ---
         self.main_content = ctk.CTkFrame(self, fg_color="transparent")
@@ -60,11 +64,14 @@ class MineSyncUI(ctk.CTk):
         self.actions_layout = ctk.CTkFrame(self.dashboard_frame, fg_color="transparent")
         self.actions_layout.pack(fill="x", padx=20, pady=5)
 
-        self.share_btn = ctk.CTkButton(self.actions_layout, text="📤 Share my world status", fg_color="#2eb85c", hover_color="#228a45", font=ctk.CTkFont(size=14, weight="bold"), command=self.share_action, state="disabled")
-        self.share_btn.pack(side="left", expand=True, padx=10, ipady=8)
+        self.share_btn = ctk.CTkButton(self.actions_layout, text="📤 Share world", fg_color="#2eb85c", hover_color="#228a45", font=ctk.CTkFont(size=14, weight="bold"), command=self.share_action, state="disabled")
+        self.share_btn.pack(side="left", expand=True, padx=5, ipady=8)
 
-        self.sync_btn = ctk.CTkButton(self.actions_layout, text="🔄 Check if my world is up-to-date", fg_color="#39f", hover_color="#0077e6", font=ctk.CTkFont(size=14, weight="bold"), command=self.sync_action, state="disabled")
-        self.sync_btn.pack(side="right", expand=True, padx=10, ipady=8)
+        self.sync_btn = ctk.CTkButton(self.actions_layout, text="🔄 Sync / Check updates", fg_color="#39f", hover_color="#0077e6", font=ctk.CTkFont(size=14, weight="bold"), command=self.sync_action, state="disabled")
+        self.sync_btn.pack(side="left", expand=True, padx=5, ipady=8)
+
+        self.copy_url_btn = ctk.CTkButton(self.actions_layout, text="🔗 Copy Repo URL", fg_color="#f39c12", hover_color="#d68910", font=ctk.CTkFont(size=14, weight="bold"), command=lambda: self.show_url_popup(), state="disabled")
+        self.copy_url_btn.pack(side="right", expand=True, padx=5, ipady=8)
 
         # Bottom Columns: Invitations (Left) & Timeline History (Right)
         self.split_frame = ctk.CTkFrame(self.dashboard_frame, fg_color="transparent")
@@ -93,6 +100,7 @@ class MineSyncUI(ctk.CTk):
                 username = self.git_manager.github_client.get_user().login
                 self.auth_status_lbl.configure(text=f"Connected: {username}", text_color="#2eb85c")
                 self.auth_btn.configure(text="Disconnect", fg_color="#e55353", hover_color="#c93b3b")
+                self.download_btn.configure(state="normal")
             except Exception:
                 self.auth_manager.logout()
 
@@ -103,6 +111,7 @@ class MineSyncUI(ctk.CTk):
             self.auth_status_lbl.configure(text="Not connected", text_color="#ff5555")
             self.auth_btn.configure(text="Link GitHub Account", fg_color=["#3a7ebf", "#1f538d"])
             self.toggle_world_buttons("disabled")
+            self.download_btn.configure(state="disabled")
             messagebox.showinfo("Disconnect", "Account unlinked successfully.")
             return
 
@@ -115,7 +124,6 @@ class MineSyncUI(ctk.CTk):
         lbl_info = ctk.CTkLabel(popup, text="Generating security login code...", font=ctk.CTkFont(size=14))
         lbl_info.pack(pady=20, padx=20)
 
-        # Container layout for the selectable code entry box and copy button
         code_frame = ctk.CTkFrame(popup, fg_color="transparent")
         
         code_entry = ctk.CTkEntry(code_frame, width=160, justify="center", font=ctk.CTkFont(size=16, weight="bold"))
@@ -124,7 +132,6 @@ class MineSyncUI(ctk.CTk):
         def copy_to_clipboard():
             self.clipboard_clear()
             self.clipboard_append(code_entry.get())
-            # Briefly tweak the button appearance to show success feedback
             copy_btn.configure(text="✅ Copied!", fg_color="#2eb85c")
             self.after(1500, lambda: copy_btn.configure(text="📋 Copy Code", fg_color=["#3a7ebf", "#1f538d"]))
 
@@ -141,7 +148,7 @@ class MineSyncUI(ctk.CTk):
                 code_entry.configure(state="normal")
                 code_entry.delete(0, "end")
                 code_entry.insert(0, user_code)
-                code_entry.configure(state="readonly") # Allows text selection, blocks text manual alteration
+                code_entry.configure(state="readonly")
                 lbl_status.configure(text="⏳ Awaiting validation from GitHub profile...", text_color="#39f")
             else:
                 lbl_info.configure(text=text)
@@ -155,6 +162,7 @@ class MineSyncUI(ctk.CTk):
                 username = self.git_manager.github_client.get_user().login
                 self.auth_status_lbl.configure(text=f"Connected: {username}", text_color="#2eb85c")
                 self.auth_btn.configure(text="Disconnect", fg_color="#e55353", hover_color="#c93b3b")
+                self.download_btn.configure(state="normal")
                 self.refresh_worlds_list()
                 popup.destroy()
                 messagebox.showinfo("MineSync", f"Success! Welcome {username}.")
@@ -188,6 +196,7 @@ class MineSyncUI(ctk.CTk):
         self.share_btn.configure(state=state)
         self.sync_btn.configure(state=state)
         self.collab_btn.configure(state=state)
+        self.copy_url_btn.configure(state=state)
 
     def share_action(self):
         self.share_btn.configure(text="⏳ Publishing...", state="disabled")
@@ -199,7 +208,7 @@ class MineSyncUI(ctk.CTk):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
             finally:
-                self.share_btn.configure(text="📤 Share my world status", state="normal")
+                self.share_btn.configure(text="📤 Share world", state="normal")
         threading.Thread(target=run, daemon=True).start()
 
     def sync_action(self):
@@ -213,17 +222,16 @@ class MineSyncUI(ctk.CTk):
                     messagebox.showinfo("MineSync", "Update successful! Your friends' data has been applied.")
                     self.refresh_timeline()
                 elif status == "AHEAD":
-                    messagebox.showinfo("MineSync", "You possess local unshared edits. Click on 'Share my world status'.")
+                    messagebox.showinfo("MineSync", "You possess local unshared edits. Click on 'Share world'.")
                 elif status == "CONFLICT_DETECTED":
                     self.ask_conflict_resolution()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
             finally:
-                self.sync_btn.configure(text="🔄 Check if my world is up-to-date", state="normal")
+                self.sync_btn.configure(text="🔄 Sync / Check updates", state="normal")
         threading.Thread(target=run, daemon=True).start()
 
     def ask_conflict_resolution(self):
-        """Explicit UI dialog interface handling multi-user parallel branch divergence"""
         dialog = ctk.CTkToplevel(self)
         dialog.title("⚠️ Save Version Conflict Detected!")
         dialog.geometry("500x320")
@@ -260,7 +268,7 @@ class MineSyncUI(ctk.CTk):
             return
 
         if len(commits) > 1:
-            reset_btn = ctk.CTkButton(self.timeline_scroll, text="💥 Rollback to very first version (Hard Reset)", fg_color="#df4759", hover_color="#b52b3a", command=lambda: self.trigger_rollback(commits[-1]["sha"]))
+            reset_btn = ctk.CTkButton(self.timeline_scroll, text="💥 Rollback to very first version", fg_color="#df4759", hover_color="#b52b3a", command=lambda: self.trigger_rollback(commits[-1]["sha"]))
             reset_btn.pack(fill="x", padx=5, pady=5)
 
         for i, commit in enumerate(commits):
@@ -284,12 +292,87 @@ class MineSyncUI(ctk.CTk):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
+    # --- NEW UI FEATURES ---
+
+    def download_world_dialog(self):
+        """Displays a dialog box to paste a GitHub URL and clone a world."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Clone Remote World")
+        dialog.geometry("450x220")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="Paste the GitHub URL of the Minecraft world:", font=ctk.CTkFont(size=14, weight="bold")).pack(pady=20)
+        
+        url_entry = ctk.CTkEntry(dialog, width=350, placeholder_text="https://github.com/Username/mc-world-name")
+        url_entry.pack(pady=5)
+
+        def proceed():
+            url = url_entry.get().strip()
+            if not url: return
+            btn.configure(text="⏳ Downloading...", state="disabled")
+            
+            def run():
+                try:
+                    world_name = self.git_manager.clone_world_from_url(url)
+                    dialog.destroy()
+                    messagebox.showinfo("Success", f"World '{world_name}' cloned successfully!\nIt will now appear in your list.")
+                    self.refresh_worlds_list()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to download world:\n{str(e)}")
+                    btn.configure(text="📥 Download World", state="normal")
+            
+            threading.Thread(target=run, daemon=True).start()
+
+        btn = ctk.CTkButton(dialog, text="📥 Download World", fg_color="#8a2be2", hover_color="#6a1b9a", command=proceed)
+        btn.pack(pady=20)
+
+    def show_url_popup(self, friend_name=None):
+        """Creates a popup with a read-only entry containing the repository URL."""
+        url = self.git_manager.get_repo_url(self.selected_world)
+        if not url:
+            messagebox.showerror("Error", "Could not retrieve the repository URL. Ensure the world is synced to GitHub first.")
+            return
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("World Shared Successfully!" if friend_name else "Share World URL")
+        popup.geometry("500x200")
+        popup.transient(self)
+        popup.grab_set()
+
+        msg = f"You successfully invited {friend_name}!\nSend them this URL to clone the world:" if friend_name else "Share this URL with your friends so they can clone the world:"
+        ctk.CTkLabel(popup, text=msg, font=ctk.CTkFont(size=14)).pack(pady=20)
+
+        frame = ctk.CTkFrame(popup, fg_color="transparent")
+        frame.pack(fill="x", padx=30)
+
+        url_entry = ctk.CTkEntry(frame)
+        url_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        url_entry.insert(0, url)
+        url_entry.configure(state="readonly")
+
+        def copy_url():
+            self.clipboard_clear()
+            self.clipboard_append(url)
+            copy_btn.configure(text="✅ Copied", fg_color="#2eb85c")
+            self.after(1500, lambda: copy_btn.configure(text="📋 Copy", fg_color=["#3a7ebf", "#1f538d"]))
+
+        copy_btn = ctk.CTkButton(frame, text="📋 Copy", width=80, command=copy_url)
+        copy_btn.pack(side="right")
+
     def invite_friend(self):
         friend = self.collab_entry.get().strip()
         if not friend: return
-        try:
-            self.git_manager.invite_collaborator(self.selected_world, friend)
-            messagebox.showinfo("Invited!", f"{friend} has been successfully granted repository access permissions.")
-            self.collab_entry.delete(0, 'end')
-        except Exception as e:
-            messagebox.showerror("Error", f"Username could not be validated or API exception error: {e}")
+        self.collab_btn.configure(text="⏳ Inviting...", state="disabled")
+        
+        def run():
+            try:
+                self.git_manager.invite_collaborator(self.selected_world, friend)
+                self.collab_entry.delete(0, 'end')
+                self.show_url_popup(friend_name=friend)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to invite user.\nMake sure the username is correct.\n\nDetails: {e}")
+            finally:
+                self.collab_btn.configure(text="Grant world access", state="normal")
+                
+        threading.Thread(target=run, daemon=True).start()
